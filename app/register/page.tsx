@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
-type LoginData = {
+type RegisterData = {
   email: string;
   password: string;
 };
@@ -13,54 +13,36 @@ type Error = {
   message: string;
 };
 
-export default function Home() {
+export default function Register() {
   const router = useRouter();
 
   const [error, setError] = useState<Error | null>(null);
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
 
-  const verifyToken = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) return router.push("/");
-
-    const options: RequestInit = {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-
-    await fetch("http://localhost:8080/verify-token", options).then(
-      async (res) => {
-        const data = await res.json();
-
-        if (data.error) {
-          return;
-        }
-
-        router.push("/chat");
-      }
-    );
-  };
-
-  useEffect(() => {
-    verifyToken();
-  }, []);
-
-  const handleLogin = async () => {
-    if (!emailRef.current || !passwordRef.current) return;
+  const handleRegister = async () => {
+    if (
+      !emailRef.current ||
+      !passwordRef.current ||
+      !confirmPasswordRef.current
+    )
+      return;
     if (
       emailRef.current.value.length == 0 ||
-      passwordRef.current.value.length == 0
+      passwordRef.current.value.length == 0 ||
+      confirmPasswordRef.current.value.length == 0
     )
       return;
 
+    if (passwordRef.current.value != confirmPasswordRef.current.value) {
+      return setError({ message: "Passwords don't match" });
+    }
+
     setError(null);
 
-    const data: LoginData = {
+    const data: RegisterData = {
       email: emailRef.current.value,
       password: passwordRef.current.value,
     };
@@ -73,7 +55,7 @@ export default function Home() {
       body: JSON.stringify(data),
     };
 
-    await fetch("http://localhost:8080/login", options).then(async (res) => {
+    await fetch("http://localhost:8080/register", options).then(async (res) => {
       const data = await res.json();
 
       if (data.error) {
@@ -81,11 +63,7 @@ export default function Home() {
         return;
       }
 
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-      }
-
-      if (res.ok) router.push("/chat");
+      if (res.ok) router.push("/");
     });
   };
 
@@ -111,9 +89,15 @@ export default function Home() {
             type="password"
             placeholder="Password"
           />
+          <input
+            ref={confirmPasswordRef}
+            className="p-2 border-2 mt-2"
+            type="password"
+            placeholder="Confirm password"
+          />
 
           <button
-            onClick={handleLogin}
+            onClick={handleRegister}
             className="p-2 border-2 mt-6 hover:bg-white hover:text-stone-800"
           >
             Log in
@@ -124,12 +108,9 @@ export default function Home() {
           )}
 
           <div className="mt-4 text-sm flex flex-row gap-1">
-            <p>Don't have an account?</p>
-            <Link
-              href="/register"
-              className="text-blue-300 hover:text-blue-400"
-            >
-              Register now
+            <p>Already have an account?</p>
+            <Link href="/" className="text-blue-300 hover:text-blue-400">
+              Log in
             </Link>
           </div>
         </div>
