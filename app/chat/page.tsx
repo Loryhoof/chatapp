@@ -3,15 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { useRouter } from "next/navigation";
+import { verifyToken } from "../auth";
 
 type UserMessage = {
   id: string;
-  message: string;
+  content: string;
+  userId: string;
+};
+
+type User = {
+  id: string;
+  nickname: string;
+  color: string;
 };
 
 export default function Chat() {
   const router = useRouter();
-  const socket = new WebSocket("ws://localhost:8080/ws");
+
+  const socketRef = useRef<WebSocket | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -20,14 +29,22 @@ export default function Chat() {
 
   const [visible, setVisible] = useState<boolean>(false);
 
+  const [users, setUsers] = useState<User[]>([]);
+
   const handleSubmit = () => {
+    console.log("Handling submit", socketRef.current);
+    if (!socketRef.current) return;
+
+    console.log("YES SOCKET");
+
     if (!inputRef.current) return;
 
+    console.log("WE IN");
     const inputText = inputRef.current.value;
 
     if (inputText.length == 0) return;
 
-    socket.send(JSON.stringify({ message: inputText }));
+    socketRef.current.send(JSON.stringify({ message: inputText }));
 
     inputRef.current.value = "";
   };
@@ -40,47 +57,62 @@ export default function Chat() {
 
   const handleReceiveSocketMessage = (e: any) => {
     if (!e.data || e.data == null) return;
-    const data = JSON.parse(e.data);
+    const req = JSON.parse(e.data);
 
-    console.log(data, "DATA");
+    if (!req || req == null) return;
 
-    if (!data || data == null) return;
+    const { event, data } = req;
 
-    // Array means it's the existing server messages
-    if (Array.isArray(data)) {
-      setMessages([...data]);
-    } else {
-      setMessages((prev) => [...prev, data]);
+    if (!event || !data) return;
+
+    console.log(event, data, "EVENT DATA");
+
+    if (event == "history") {
+      const { users, messages } = data;
+      setUsers(users);
+      setMessages(messages);
+    }
+
+    if (event == "message") {
+      const newMessage: UserMessage = {
+        id: data.id,
+        content: data.content,
+        userId: data.userId,
+      };
+      setMessages((prev) => [...prev, newMessage]);
     }
   };
 
-  const verifyToken = async () => {
-    const token = localStorage.getItem("token");
+  const getUserByUserId = (userId: string) => {
+    if (!users || users.length == 0) return null;
 
-    if (!token) return router.push("/");
+    const found = users.find((user: User) => user.id == userId);
 
-    const options: RequestInit = {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-
-    await fetch("http://localhost:8080/verify-token", options).then(
-      async (res) => {
-        const data = await res.json();
-
-        if (data.error) {
-          return router.push("/");
-        }
-
-        setVisible(true);
-      }
-    );
+    return found;
   };
 
   useEffect(() => {
-    verifyToken();
+    const checkAuth = async () => {
+      const result = await verifyToken();
+
+      if (!result.ok) {
+        router.push("/");
+        return;
+      }
+
+      const token = localStorage.getItem("access_token");
+
+      const socketURL = `ws://localhost:8080/ws?token=${token}`;
+
+      console.log(socketURL);
+
+      //setSocket(new WebSocket(socketURL));
+
+      socketRef.current = new WebSocket(socketURL);
+
+      setVisible(true);
+    };
+    checkAuth();
   }, []);
 
   useEffect(() => {
@@ -91,23 +123,33 @@ export default function Chat() {
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
 
-    socket.addEventListener("open", (e) => {
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.addEventListener("open", (e) => {
       console.log("Connected to server!", e);
     });
 
-    socket.addEventListener("message", handleReceiveSocketMessage);
+    socketRef.current.addEventListener("message", handleReceiveSocketMessage);
 
-    socket.addEventListener("close", (e) => {
+    socketRef.current.addEventListener("close", (e) => {
       console.log("Disconnected from the server!", e);
     });
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      socket.removeEventListener("open", () => {});
-      socket.removeEventListener("close", () => {});
-      socket.removeEventListener("message", handleReceiveSocketMessage);
+      socketRef.current?.removeEventListener("open", () => {});
+      socketRef.current?.removeEventListener("close", () => {});
+      socketRef.current?.removeEventListener(
+        "message",
+        handleReceiveSocketMessage
+      );
     };
-  }, []);
+  }, [socketRef.current]);
 
   return (
     <>
@@ -115,6 +157,8 @@ export default function Chat() {
         <div className="flex flex-row h-screen bg-stone-800">
           {/* Sidebar */}
           <Sidebar />
+          {users &&
+            users.map((user, index) => <div key={index}>{user.nickname}</div>)}
           <div className="flex flex-col w-full h-full gap-2 pb-12 pt-12 pl-8 pr-8">
             {/* Output section */}
             <div
@@ -124,10 +168,16 @@ export default function Chat() {
             >
               {messages.map((message, index) => (
                 <p className="text-md text-gray-100 font-thin p-2" key={index}>
-                  <span className="font-bold">
-                    {String(message.id).slice(0, 4)}:
+                  <span
+                    className={`font-bold text-[${
+                      getUserByUserId(message.userId)?.color ?? "#FFFFFF"
+                    }]`}
+                  >
+                    {getUserByUserId(message.userId)?.nickname ??
+                      message.userId}
+                    :
                   </span>{" "}
-                  {message.message}
+                  {message.content}
                 </p>
               ))}
             </div>

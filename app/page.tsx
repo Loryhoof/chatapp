@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { verifyToken } from "./auth";
 
 type LoginData = {
   email: string;
@@ -21,33 +22,16 @@ export default function Home() {
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const verifyToken = async () => {
-    const token = localStorage.getItem("token");
+  useEffect(() => {
+    const checkAuth = async () => {
+      const result = await verifyToken();
 
-    if (!token) return router.push("/");
-
-    const options: RequestInit = {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-
-    await fetch("http://localhost:8080/verify-token", options).then(
-      async (res) => {
-        const data = await res.json();
-
-        if (data.error) {
-          return;
-        }
-
+      if (result.ok) {
         router.push("/chat");
       }
-    );
-  };
+    };
 
-  useEffect(() => {
-    verifyToken();
+    checkAuth();
   }, []);
 
   const handleLogin = async () => {
@@ -81,8 +65,14 @@ export default function Home() {
         return;
       }
 
-      if (data.token) {
-        localStorage.setItem("token", data.token);
+      console.log(data, "DATA");
+
+      if (data.accessToken) {
+        localStorage.setItem("access_token", data.accessToken);
+      }
+
+      if (data.refreshToken) {
+        localStorage.setItem("refresh_token", data.refreshToken);
       }
 
       if (res.ok) router.push("/chat");
@@ -93,11 +83,6 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-stone-800 items-center justify-center text-white">
       <div className="flex flex-col gap-2">
         <p className="font-bold text-2xl">Welcome to Chatapp</p>
-        {/* <div className="flex flex-row items-center gap-1 text-xl bg-orange-600 border-1 rounded-xl p-2">
-          <p className="font-bold text-sm">Built in Golang</p>
-          <FaGolang className="text-sky-500" />
-        </div> */}
-
         <div className="flex flex-col">
           <input
             ref={emailRef}
