@@ -109,7 +109,7 @@ export default function Home() {
           )}
 
           <div className="mt-4 text-sm flex flex-row gap-1">
-            <p>Don't have an account?</p>
+            <p>Don&apos;t have an account?</p>
             <Link
               href="/register"
               className="text-blue-300 hover:text-blue-400"

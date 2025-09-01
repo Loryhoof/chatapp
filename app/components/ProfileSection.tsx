@@ -17,7 +17,7 @@ type UserInfo = {
 };
 
 const getUserInfo = async (): Promise<UserInfo | null> => {
-  let token = localStorage.getItem("access_token");
+  const token = localStorage.getItem("access_token");
 
   console.log("WE IN DOING THINGS", token);
   if (!token || token.length == 0) return null;

@@ -32,31 +32,77 @@ export default function Chat() {
 
   const [users, setUsers] = useState<User[]>([]);
 
-  const handleSubmit = () => {
-    console.log("Handling submit", socketRef.current);
-    if (!socketRef.current) return;
+  const runChangeReq = (field: string, value: string) => {
+    const token = localStorage.getItem("access_token");
 
-    console.log("YES SOCKET");
+    if (!token) return false;
 
-    if (!inputRef.current) return;
+    const payload = {
+      field: field,
+      value: value,
+    };
 
-    console.log("WE IN");
-    const inputText = inputRef.current.value;
+    const options: RequestInit = {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    };
 
-    if (inputText.length == 0) return;
-
-    socketRef.current.send(JSON.stringify({ message: inputText }));
-
-    inputRef.current.value = "";
+    fetch("http://localhost:8080/update-user", options);
   };
 
-  const handleKeyDown = (e: any) => {
+  const checkCommands = (input: string): boolean => {
+    if (input.startsWith("/")) {
+      let words = input.slice(1, input.length).trim().split(" ");
+      if (words.length != 2) return false;
+
+      let command = words[0];
+      let value = words[1];
+
+      if (command.length == 0 || value.length == 0) return false;
+
+      if (command == "nickname") {
+        if (value.length > 20) return false;
+        runChangeReq("nickname", value);
+        return true;
+      }
+
+      if (command == "color") {
+        // check if hex
+        if (!/^#[0-9A-Fa-f]{6}$/.test(value)) return false;
+        runChangeReq("color", value);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const handleSubmit = () => {
+    if (!socketRef.current) return;
+    if (!inputRef.current) return;
+
+    const inputText = inputRef.current.value;
+    if (inputText.length == 0) return;
+
+    inputRef.current.value = "";
+
+    // check for slash commands
+    if (checkCommands(inputText)) return;
+
+    socketRef.current.send(JSON.stringify({ message: inputText }));
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key == "Enter") {
       handleSubmit();
     }
   };
 
-  const handleReceiveSocketMessage = (e: any) => {
+  const handleReceiveSocketMessage = (e: MessageEvent) => {
     if (!e.data || e.data == null) return;
     const req = JSON.parse(e.data);
 

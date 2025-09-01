@@ -37,7 +37,7 @@ export default function Register() {
       return;
 
     if (passwordRef.current.value != confirmPasswordRef.current.value) {
-      return setError({ message: "Passwords don't match" });
+      return setError({ message: "Passwords do not match" });
     }
 
     setError(null);
