@@ -57,26 +57,28 @@ export default function Home() {
       body: JSON.stringify(data),
     };
 
-    await fetch("http://localhost:8080/login", options).then(async (res) => {
-      const data = await res.json();
+    await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/login`, options).then(
+      async (res) => {
+        const data = await res.json();
 
-      if (data.error) {
-        setError({ message: data.error } as Error);
-        return;
+        if (data.error) {
+          setError({ message: data.error } as Error);
+          return;
+        }
+
+        console.log(data, "DATA");
+
+        if (data.accessToken) {
+          localStorage.setItem("access_token", data.accessToken);
+        }
+
+        if (data.refreshToken) {
+          localStorage.setItem("refresh_token", data.refreshToken);
+        }
+
+        if (res.ok) router.push("/chat");
       }
-
-      console.log(data, "DATA");
-
-      if (data.accessToken) {
-        localStorage.setItem("access_token", data.accessToken);
-      }
-
-      if (data.refreshToken) {
-        localStorage.setItem("refresh_token", data.refreshToken);
-      }
-
-      if (res.ok) router.push("/chat");
-    });
+    );
   };
 
   return (

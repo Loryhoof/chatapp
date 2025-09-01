@@ -28,7 +28,10 @@ const getUserInfo = async (): Promise<UserInfo | null> => {
       Authorization: `Bearer ${token}`,
     },
   };
-  const response = await fetch("http://localhost:8080/user-info", options);
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_SERVER_URL}/user-info`,
+    options
+  );
   const data = await response.json();
 
   return data;
@@ -80,7 +83,7 @@ export default function ProfileSection({ onClose }: ProfileProps) {
       body: JSON.stringify(payload),
     };
 
-    fetch("http://localhost:8080/change-nickname", options);
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/change-nickname`, options);
   };
 
   const handleChangeColor = async () => {
@@ -107,7 +110,7 @@ export default function ProfileSection({ onClose }: ProfileProps) {
       body: JSON.stringify(payload),
     };
 
-    await fetch("http://localhost:8080/update-user", options);
+    await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/update-user`, options);
   };
 
   const handleLogout = async () => {
@@ -126,7 +129,7 @@ export default function ProfileSection({ onClose }: ProfileProps) {
       body: JSON.stringify({ refreshToken: refreshToken }),
     };
 
-    await fetch("http://localhost:8080/logout", options);
+    await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/logout`, options);
 
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");

@@ -51,7 +51,7 @@ export default function Chat() {
       body: JSON.stringify(payload),
     };
 
-    fetch("http://localhost:8080/update-user", options);
+    fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/update-user`, options);
   };
 
   const checkCommands = (input: string): boolean => {
@@ -194,7 +194,7 @@ export default function Chat() {
 
       const token = localStorage.getItem("access_token");
 
-      const socketURL = `ws://localhost:8080/ws?token=${token}`;
+      const socketURL = `${process.env.NEXT_PUBLIC_SOCKET_URL}?token=${token}`;
 
       socketRef.current = new WebSocket(socketURL);
 

@@ -21,7 +21,10 @@ export const refreshToken = async (): Promise<{ ok: boolean }> => {
     body: JSON.stringify(requestData),
   };
 
-  const response = await fetch("http://localhost:8080/refresh-token", options);
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_SERVER_URL}/refresh-token`,
+    options
+  );
   const data = await response.json();
 
   if (data.error) {
@@ -51,7 +54,10 @@ export const verifyToken = async (): Promise<{ ok: boolean }> => {
     },
   };
 
-  const data = await fetch("http://localhost:8080/verify-token", options);
+  const data = await fetch(
+    `${process.env.NEXT_PUBLIC_SERVER_URL}/verify-token`,
+    options
+  );
   const response = await data.json();
 
   if (!response.error) {
