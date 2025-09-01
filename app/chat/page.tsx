@@ -5,13 +5,14 @@ import Sidebar from "../components/Sidebar";
 import { useRouter } from "next/navigation";
 import { verifyToken } from "../auth";
 
-type UserMessage = {
+export type UserMessage = {
   id: string;
   content: string;
   userId: string;
+  createdAt: string;
 };
 
-type User = {
+export type User = {
   id: string;
   nickname: string;
   color: string;
@@ -65,21 +66,45 @@ export default function Chat() {
 
     if (!event || !data) return;
 
-    console.log(event, data, "EVENT DATA");
+    // console.log(event, data, "EVENT DATA");
 
     if (event == "history") {
-      const { users, messages } = data;
-      setUsers(users);
+      const { messages, serverUsers } = data;
+
+      setUsers(serverUsers);
       setMessages(messages);
     }
 
     if (event == "message") {
-      const newMessage: UserMessage = {
-        id: data.id,
-        content: data.content,
-        userId: data.userId,
-      };
+      const newMessage: UserMessage = data;
+      console.log(newMessage, "nemwss");
       setMessages((prev) => [...prev, newMessage]);
+    }
+
+    if (event == "update_user") {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === data.id
+            ? { ...u, nickname: data.nickname, color: data.color }
+            : u
+        )
+      );
+    }
+
+    if (event == "user_joined") {
+      console.log("User Joined");
+
+      const user: User = data;
+
+      setUsers((prev) => {
+        const exists = prev.some((u) => u.id === user.id);
+        if (exists) return prev;
+        return [...prev, user];
+      });
+    }
+
+    if (event == "user_left") {
+      console.log("User Left");
     }
   };
 
@@ -89,6 +114,27 @@ export default function Chat() {
     const found = users.find((user: User) => user.id == userId);
 
     return found;
+  };
+
+  const formatTime = (dateString: string): string => {
+    const now = new Date();
+    const d = new Date(dateString);
+
+    const dif = now.getTime() - d.getTime();
+
+    const minute = 60000;
+    const hour = minute * 60;
+
+    if (dif >= hour * 24) {
+      return d.toLocaleDateString([], { dateStyle: "medium" });
+    }
+
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const formatColor = (userId: string): string => {
+    const color = getUserByUserId(userId)?.color;
+    return color ?? "#FFFFFF";
   };
 
   useEffect(() => {
@@ -103,10 +149,6 @@ export default function Chat() {
       const token = localStorage.getItem("access_token");
 
       const socketURL = `ws://localhost:8080/ws?token=${token}`;
-
-      console.log(socketURL);
-
-      //setSocket(new WebSocket(socketURL));
 
       socketRef.current = new WebSocket(socketURL);
 
@@ -156,9 +198,8 @@ export default function Chat() {
       {visible && (
         <div className="flex flex-row h-screen bg-stone-800">
           {/* Sidebar */}
-          <Sidebar />
-          {users &&
-            users.map((user, index) => <div key={index}>{user.nickname}</div>)}
+          <Sidebar users={users} />
+
           <div className="flex flex-col w-full h-full gap-2 pb-12 pt-12 pl-8 pr-8">
             {/* Output section */}
             <div
@@ -169,15 +210,17 @@ export default function Chat() {
               {messages.map((message, index) => (
                 <p className="text-md text-gray-100 font-thin p-2" key={index}>
                   <span
-                    className={`font-bold text-[${
-                      getUserByUserId(message.userId)?.color ?? "#FFFFFF"
-                    }]`}
+                    className={`font-bold`}
+                    style={{ color: formatColor(message.userId) }}
                   >
                     {getUserByUserId(message.userId)?.nickname ??
                       message.userId}
                     :
                   </span>{" "}
-                  {message.content}
+                  {message.content}{" "}
+                  <span className="text-xs ml-1 text-gray-500">
+                    {formatTime(message.createdAt)}
+                  </span>
                 </p>
               ))}
             </div>

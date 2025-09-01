@@ -16,43 +16,48 @@ type UserInfo = {
   createdAt: string;
 };
 
+const getUserInfo = async (): Promise<UserInfo | null> => {
+  let token = localStorage.getItem("access_token");
+
+  console.log("WE IN DOING THINGS", token);
+  if (!token || token.length == 0) return null;
+
+  const options: RequestInit = {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+  const response = await fetch("http://localhost:8080/user-info", options);
+  const data = await response.json();
+
+  return data;
+};
+
 export default function ProfileSection({ onClose }: ProfileProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const colorRef = useRef<HTMLInputElement>(null);
 
   const [userInfo, setUserInfo] = useState<UserInfo>();
 
   useEffect(() => {
-    const getUserInfo = async () => {
-      let token = localStorage.getItem("access_token");
-
-      console.log("WE IN DOING THINGS", token);
-      if (!token || token.length == 0) return;
-
-      const options: RequestInit = {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
-      const response = await fetch("http://localhost:8080/user-info", options);
-      const data = await response.json();
-
-      setUserInfo(data);
-
-      console.log(data, "user-info");
-    };
-
-    getUserInfo();
+    getUserInfo().then((e) => {
+      if (e) setUserInfo(e);
+    });
   }, []);
 
   useEffect(() => {
     if (inputRef.current != undefined) {
       inputRef.current.value = userInfo?.nickname as string;
     }
+
+    if (colorRef.current != undefined) {
+      colorRef.current.value = userInfo?.color as string;
+    }
   }, [userInfo]);
 
-  const handleChangeNickname = async () => {
+  const handleChangeNickname = () => {
     if (!inputRef.current || inputRef.current.value.length == 0) return;
 
     const token = localStorage.getItem("access_token");
@@ -75,13 +80,34 @@ export default function ProfileSection({ onClose }: ProfileProps) {
       body: JSON.stringify(payload),
     };
 
-    const req = await fetch("http://localhost:8080/change-nickname", options);
-    const data = await req.json();
+    fetch("http://localhost:8080/change-nickname", options);
+  };
 
-    if (!data.error) {
-      inputRef.current.value = "";
-      onClose();
-    }
+  const handleChangeColor = async () => {
+    if (!colorRef.current || colorRef.current.value.length == 0) return;
+
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    if (colorRef.current.value.trim().length == 0) return;
+
+    if (colorRef.current.value.trim().length > 100) return;
+
+    const payload = {
+      field: "color",
+      value: colorRef.current.value.trim(),
+    };
+
+    const options: RequestInit = {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    };
+
+    await fetch("http://localhost:8080/update-user", options);
   };
 
   const handleLogout = async () => {
@@ -127,6 +153,17 @@ export default function ProfileSection({ onClose }: ProfileProps) {
           <input ref={inputRef} className="border-1 border-white mb-4"></input>
           <button
             onClick={handleChangeNickname}
+            className="p-1 bg-blue-500 text-white hover:bg-blue-700"
+          >
+            Save
+          </button>
+        </div>
+
+        <div className="mb-8 flex flex-col gap-1">
+          <p>Change Color</p>
+          <input ref={colorRef} className="border-1 border-white mb-4"></input>
+          <button
+            onClick={handleChangeColor}
             className="p-1 bg-blue-500 text-white hover:bg-blue-700"
           >
             Save
