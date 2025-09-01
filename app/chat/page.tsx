@@ -56,11 +56,11 @@ export default function Chat() {
 
   const checkCommands = (input: string): boolean => {
     if (input.startsWith("/")) {
-      let words = input.slice(1, input.length).trim().split(" ");
+      const words = input.slice(1, input.length).trim().split(" ");
       if (words.length != 2) return false;
 
-      let command = words[0];
-      let value = words[1];
+      const command = words[0];
+      const value = words[1];
 
       if (command.length == 0 || value.length == 0) return false;
 
